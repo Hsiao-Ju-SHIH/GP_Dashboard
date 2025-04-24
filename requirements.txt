@@ -2,3 +2,4 @@ shiny
 shinywidgets
 pandas
 plotly
+Jinja2
