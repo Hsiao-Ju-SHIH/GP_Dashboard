@@ -5,6 +5,7 @@ from shinywidgets import output_widget, render_widget
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import pathlib
 
 # ----------------------
 # Sample Data
@@ -38,6 +39,8 @@ cashflows = pd.DataFrame({
     "Amount": [-10, -15, -5, 30, 2, -20, 40, 5],
     "Fund": ["Fund I", "Fund I", "Fund I", "Fund I", "Fund I", "Fund II", "Fund II", "Fund II"]
 })
+cashflows['Date'] = cashflows['Date'].dt.date
+cashflows['Date'] = cashflows['Date'].astype('string')
 
 # ----------------------
 # UI
@@ -56,15 +59,13 @@ app_ui = ui.page_sidebar(
     ui.navset_tab(
         # Overview Tab
         ui.nav_panel("Portfolio Overview",
-            # ui.row(
-            #     ui.column(4, ui.input_selectize("fund_filter", "Select Fund(s):", choices=list(funds["Fund"]), multiple=True)),
-            #     ui.column(4, ui.input_slider("year_filter", "Investment Year", 2015, 2025, 2018)),
-            # ),
-            # ui.hr(),
             ui.layout_columns(
                 ui.card(
                     ui.card_header('Statistics'), ui.output_table("summary_table"), full_screen=True
                 ),
+                ui.card(
+                    ui.download_button('download_data', "Download Fund Data", class_ = 'btn btn-primary')
+                ),col_widths=[10, 2],
             ),
             ui.layout_columns(
                 ui.card(
@@ -72,7 +73,7 @@ app_ui = ui.page_sidebar(
                 ),
                 ui.card(
                     ui.card_header('Region Breakdown'), output_widget("regional_alloc"), full_screen=True
-                ),col_widths=[6 ,6 ,12],
+                ),col_widths=[6, 6],
             ),
             # output_widget("sector_alloc"),
             # output_widget("regional_alloc")
@@ -144,6 +145,14 @@ def server(input, output, session):
     def regional_alloc():
         return px.pie(names=["North America", "Europe", "Asia"], values=[50, 30, 20], title="Regional Allocation", hole=0.3)
 
+
+    @output
+    @render.download(filename='company_profile.xlsx')
+    def download_data():
+        file_path = pathlib.Path('data/POC_output.xlsx')
+        with open(file_path, 'rb') as f:
+            yield f.read()
+
     @output
     @render.table
     def fund_metrics():
@@ -189,7 +198,15 @@ def server(input, output, session):
     @output
     @render_widget
     def cashflow_timeline():
-        return px.line(cashflows, x="Date", y="Amount", color="Fund", title="Cash Flow Timeline", markers=True)
+        fig = px.line(cashflows, x="Date", y="Amount", color="Fund", title="Cash Flow Timeline", markers=True)
+        # fig.update_layout(
+        #     xaxis=dict(
+        #         type='date',
+        #         tickformat='%Y-%m',  # Or try '%b %Y' for 'Jan 2024' style
+        #         tickangle=45
+        #     )
+        # )
+        return fig
 
     @output
     @render_widget

@@ -3,3 +3,4 @@ shinywidgets
 pandas
 plotly
 Jinja2
+pathlib
