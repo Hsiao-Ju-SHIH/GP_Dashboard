@@ -61,11 +61,11 @@ app_ui = ui.page_sidebar(
         ui.nav_panel("Portfolio Overview",
             ui.layout_columns(
                 ui.card(
-                    ui.card_header('Statistics'), ui.output_table("summary_table"), full_screen=True
+                    ui.card_header('Statistics'), ui.output_data_frame("summary_table"), full_screen=True
                 ),
                 ui.card(
                     ui.download_button('download_data', "Download Fund Data", class_ = 'btn btn-primary')
-                ),col_widths=[10, 2],
+                ),col_widths=[6, 6],
             ),
             ui.layout_columns(
                 ui.card(
@@ -123,7 +123,7 @@ def server(input, output, session):
         return df
 
     @output
-    @render.table
+    @render.data_frame
     def summary_table():
         df = filtered_funds()
         summary = {
@@ -133,7 +133,7 @@ def server(input, output, session):
             "NAV": df["NAV"].sum()
         }
         df_summary = pd.DataFrame(summary.items(), columns=["Metric", "Value"])
-        return df_summary
+        return render.DataGrid(df_summary.round(2))
 
     @output
     @render_widget
