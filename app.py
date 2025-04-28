@@ -42,6 +42,28 @@ cashflows = pd.DataFrame({
 cashflows['Date'] = cashflows['Date'].dt.date
 cashflows['Date'] = cashflows['Date'].astype('string')
 
+
+pipeline_data = pd.DataFrame({
+    "Deal": ["Startup A", "Startup B", "Startup C", "Startup D", "Startup E", "Startup F"],
+    "Stage": ["Screening", "Due Diligence", "IC", "Closed", "IC", "Closed"],
+    "Lead Partner": ["Aditya", "Siddharth", "Adrian", "Aditya", "Adrian", "Aditya"],
+})
+
+company_kpis = pd.DataFrame({
+    "Company": ["eFishery", "KitaBeli"],
+    "Monthly Revenue ($K)": [200, 150],
+    "User Growth (%)": [12, 18],
+    "EBITDA Margin (%)": [-10, -5],
+})
+
+lp_data = pd.DataFrame({
+    "LP Name": ["Sovereign Fund A", "Family Office B", "Institutional C"],
+    "Commitment ($M)": [50, 10, 30],
+    "Type": ["Sovereign", "Family Office", "Institution"],
+    "Email": ["lpA@example.com", "lpB@example.com", "lpC@example.com"],
+    "Phone": ["+62 812-3456", "+65 9123-4567", "+1 415-234-5678"],
+})
+
 # ----------------------
 # UI
 # ----------------------
@@ -77,6 +99,45 @@ app_ui = ui.page_sidebar(
             ),
             # output_widget("sector_alloc"),
             # output_widget("regional_alloc")
+        ),
+
+        # Pipeline Tab
+        ui.nav_panel("Deal Pipeline",
+            ui.layout_columns(
+                ui.card(
+                    ui.download_button("download_deals", "Download Deals (Excel)", class_="btn-primary"),
+                )
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("pipeline_chart"),
+                ),
+                ui.card(
+                    ui.output_data_frame("pipeline_table"),
+                ),col_widths=[6, 6],
+            ),
+        ),
+
+        # LP Tab
+        ui.nav_panel("Investor Relations",
+            ui.layout_columns(
+                ui.card(
+                    ui.input_action_button('send_update', 'Send Quarterly Update', class_='btn-success'),
+                )
+            ),
+            ui.layout_columns(
+                ui.card(
+                    ui.output_text('lp_summary'),
+                )
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("lp_commitments_chart"),
+                ),
+                ui.card(
+                    ui.output_data_frame("lp_directory"),
+                ),
+            ),
         ),
 
         # Fund Performance
@@ -152,6 +213,67 @@ def server(input, output, session):
         file_path = pathlib.Path('data/POC_output.xlsx')
         with open(file_path, 'rb') as f:
             yield f.read()
+
+    # Deal Pipeline
+    @output
+    @render_widget
+    def pipeline_chart():
+        fig = px.histogram(
+            pipeline_data,
+            x="Stage",
+            color="Lead Partner",
+            barmode="group",
+            title="Deals by Stage"
+        )
+        return fig
+
+    @output
+    @render.data_frame
+    def pipeline_table():
+        return pipeline_data
+
+    @output
+    @render.download(filename="deal_pipeline.xlsx")
+    def download_deals():
+        def writer(file):
+            pipeline_data.to_excel(file, index=False)
+        return writer
+
+    # LP
+    @output
+    @render.data_frame
+    def lp_directory():
+        return lp_data
+    
+    @output
+    @render.text
+    def lp_summary():
+        total_commitment = lp_data["Commitment ($M)"].sum()
+        avg_commitment = lp_data["Commitment ($M)"].mean()
+        num_lps = lp_data.shape[0]
+        return f"Total Commitment: ${total_commitment}M | Avg Commitment: ${avg_commitment:.1f}M | LPs: {num_lps}"
+
+    @output
+    @render_widget
+    def lp_commitments_chart():
+        fig = px.bar(
+            lp_data,
+            x="LP Name",
+            y="Commitment ($M)",
+            color="Type",
+            title="LP Commitments by Investor Type"
+        )
+        return fig
+
+    @output
+    @render.data_frame
+    def lp_directory():
+        return lp_data[["LP Name", "Commitment ($M)", "Type", "Email", "Phone"]]
+
+    @reactive.effect
+    @reactive.event(input.send_update)
+    def send_update():
+        print("Simulating: Sending quarterly report to LPs...")
 
     @output
     @render.table
