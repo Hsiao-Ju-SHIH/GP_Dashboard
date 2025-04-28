@@ -69,7 +69,7 @@ lp_data = pd.DataFrame({
 # ----------------------
 app_ui = ui.page_sidebar(
     ui.sidebar(ui.input_selectize("fund_filter", "Select Fund(s):", choices=list(funds["Fund"]), multiple=True),
-               ui.input_slider("year_filter", "Investment Year", 2015, 2025, 2018),               
+               ui.input_slider("year_filter", "Investment Year", 2015, 2025, 2025),               
     ),
     ui.tags.style("""
         h2 { color: #003366; margin-top: 1rem; }
@@ -101,64 +101,61 @@ app_ui = ui.page_sidebar(
             # output_widget("regional_alloc")
         ),
 
-        # Pipeline Tab
-        ui.nav_panel("Deal Pipeline",
-            ui.layout_columns(
-                ui.card(
-                    ui.download_button("download_deals", "Download Deals (Excel)", class_="btn-primary"),
-                )
-            ),
-            ui.layout_columns(
-                ui.card(
-                    output_widget("pipeline_chart"),
-                ),
-                ui.card(
-                    ui.output_data_frame("pipeline_table"),
-                ),col_widths=[6, 6],
-            ),
-        ),
-
-        # LP Tab
-        ui.nav_panel("Investor Relations",
-            ui.layout_columns(
-                ui.card(
-                    ui.input_action_button('send_update', 'Send Quarterly Update', class_='btn-success'),
-                )
-            ),
-            ui.layout_columns(
-                ui.card(
-                    ui.output_text('lp_summary'),
-                )
-            ),
-            ui.layout_columns(
-                ui.card(
-                    output_widget("lp_commitments_chart"),
-                ),
-                ui.card(
-                    ui.output_data_frame("lp_directory"),
-                ),
-            ),
-        ),
-
         # Fund Performance
         ui.nav_panel("Fund Performance",
-            ui.output_table("fund_metrics"),
-            output_widget("irr_comparison"),
-            output_widget("deployment_timeline")
+            ui.layout_columns(
+                ui.card(
+                    ui.output_data_frame("fund_metrics"), full_screen=True
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("irr_comparison"), full_screen=True
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("deployment_timeline"), full_screen=True
+                ),
+            ),
         ),
 
         # Portfolio Companies
         ui.nav_panel("Portfolio Companies",
-            ui.output_table("company_table"),
-            output_widget("value_creation"),
-            output_widget("holding_period")
+            ui.layout_columns(
+                ui.card(
+                    ui.output_data_frame("company_table"), full_screen=True
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                output_widget("value_creation"), full_screen=True     
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                output_widget("holding_period"), full_screen=True      
+                ),
+            ),
         ),
 
         # Cash Flows
         ui.nav_panel("Cash Flow Analysis",
-            output_widget("cashflow_timeline"),
-            output_widget("cashflow_breakdown"),
-            output_widget("cumulative_cashflow")
+            ui.layout_columns(
+                ui.card(
+                    output_widget("cashflow_timeline"), full_screen=True
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("cashflow_breakdown"), full_screen=True
+                ),
+            ),
+            ui.layout_columns(
+                ui.card(
+                    output_widget("cumulative_cashflow"), full_screen=True
+                ),
+            ),
         )
     )
 )
@@ -214,69 +211,9 @@ def server(input, output, session):
         with open(file_path, 'rb') as f:
             yield f.read()
 
-    # Deal Pipeline
-    @output
-    @render_widget
-    def pipeline_chart():
-        fig = px.histogram(
-            pipeline_data,
-            x="Stage",
-            color="Lead Partner",
-            barmode="group",
-            title="Deals by Stage"
-        )
-        return fig
 
     @output
     @render.data_frame
-    def pipeline_table():
-        return pipeline_data
-
-    @output
-    @render.download(filename="deal_pipeline.xlsx")
-    def download_deals():
-        def writer(file):
-            pipeline_data.to_excel(file, index=False)
-        return writer
-
-    # LP
-    @output
-    @render.data_frame
-    def lp_directory():
-        return lp_data
-    
-    @output
-    @render.text
-    def lp_summary():
-        total_commitment = lp_data["Commitment ($M)"].sum()
-        avg_commitment = lp_data["Commitment ($M)"].mean()
-        num_lps = lp_data.shape[0]
-        return f"Total Commitment: ${total_commitment}M | Avg Commitment: ${avg_commitment:.1f}M | LPs: {num_lps}"
-
-    @output
-    @render_widget
-    def lp_commitments_chart():
-        fig = px.bar(
-            lp_data,
-            x="LP Name",
-            y="Commitment ($M)",
-            color="Type",
-            title="LP Commitments by Investor Type"
-        )
-        return fig
-
-    @output
-    @render.data_frame
-    def lp_directory():
-        return lp_data[["LP Name", "Commitment ($M)", "Type", "Email", "Phone"]]
-
-    @reactive.effect
-    @reactive.event(input.send_update)
-    def send_update():
-        print("Simulating: Sending quarterly report to LPs...")
-
-    @output
-    @render.table
     def fund_metrics():
         return filtered_funds()
 
@@ -285,6 +222,13 @@ def server(input, output, session):
     def irr_comparison():
         df = filtered_funds()
         fig = px.bar(df, x="Fund", y="IRR", text="IRR", title="IRR Comparison")
+        fig.add_hline(
+                    y=15,  # 15%
+                    line_dash="dash",
+                    line_color="#346beb",
+                    annotation_text="Benchmark 15%",
+                    annotation_position="top left"
+                )
         return fig
 
     @output
@@ -300,7 +244,7 @@ def server(input, output, session):
         return fig
 
     @output
-    @render.table
+    @render.data_frame
     def company_table():
         return filtered_companies()
 
@@ -308,26 +252,40 @@ def server(input, output, session):
     @render_widget
     def value_creation():
         df = filtered_companies()
-        return px.bar(df, x="Company", y="MOIC", title="Top Performers by MOIC")
+        fig = px.bar(df, x="Company", y="MOIC", title="Top Performers by MOIC")
+        fig.add_hline(
+                    y=2,  # 2x
+                    line_dash="dash",
+                    line_color="#346beb",
+                    annotation_text="Benchmark 2x",
+                    annotation_position="top right"
+                )
+        return fig
 
     @output
     @render_widget
     def holding_period():
         df = filtered_companies()
         df["Holding"] = df["Exit Date"].fillna("2025").astype(int) - df["Investment Date"].astype(int)
-        return px.bar(df, x="Company", y="Holding", title="Holding Period (Years)")
+        fig = px.bar(df, x="Company", y="Holding", title="Holding Period (Years)")
+        fig.add_hline(
+                    y=4.5,  # 4.5 years
+                    line_dash="dash",
+                    line_color="#346beb",
+                    annotation_text="Benchmark 4.5 years",
+                    annotation_position="top right"
+                )
+        return fig
 
     @output
     @render_widget
     def cashflow_timeline():
         fig = px.line(cashflows, x="Date", y="Amount", color="Fund", title="Cash Flow Timeline", markers=True)
-        # fig.update_layout(
-        #     xaxis=dict(
-        #         type='date',
-        #         tickformat='%Y-%m',  # Or try '%b %Y' for 'Jan 2024' style
-        #         tickangle=45
-        #     )
-        # )
+        fig.add_hline(
+                    y=0,  
+                    line_dash="dash",
+                    line_color="#346beb",
+                )
         return fig
 
     @output
@@ -341,7 +299,13 @@ def server(input, output, session):
     def cumulative_cashflow():
         df = cashflows.sort_values("Date")
         df["Cumulative"] = df.groupby("Fund")["Amount"].cumsum()
-        return px.line(df, x="Date", y="Cumulative", color="Fund", title="Cumulative Cash Flow by Fund")
+        fig = px.line(df, x="Date", y="Cumulative", color="Fund", title="Cumulative Cash Flow by Fund")
+        fig.add_hline(
+                    y=0,  
+                    line_dash="dash",
+                    line_color="#346beb",
+                )
+        return fig
 
 # ----------------------
 # Run App
