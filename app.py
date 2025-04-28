@@ -91,21 +91,19 @@ app_ui = ui.page_sidebar(
             ),
             ui.layout_columns(
                 ui.card(
-                    ui.card_header('Sector Breakdown'), output_widget("sector_alloc"), full_screen=True
+                    output_widget("sector_alloc"), full_screen=True
                 ),
                 ui.card(
-                    ui.card_header('Region Breakdown'), output_widget("regional_alloc"), full_screen=True
+                    output_widget("regional_alloc"), full_screen=True
                 ),col_widths=[6, 6],
             ),
-            # output_widget("sector_alloc"),
-            # output_widget("regional_alloc")
         ),
 
         # Fund Performance
         ui.nav_panel("Fund Performance",
             ui.layout_columns(
                 ui.card(
-                    ui.output_data_frame("fund_metrics"), full_screen=True
+                    ui.card_header('Statistics'), ui.output_data_frame("fund_metrics"), full_screen=True
                 ),
             ),
             ui.layout_columns(
@@ -124,7 +122,7 @@ app_ui = ui.page_sidebar(
         ui.nav_panel("Portfolio Companies",
             ui.layout_columns(
                 ui.card(
-                    ui.output_data_frame("company_table"), full_screen=True
+                    ui.card_header('Statistics'), ui.output_data_frame("company_table"), full_screen=True
                 ),
             ),
             ui.layout_columns(
